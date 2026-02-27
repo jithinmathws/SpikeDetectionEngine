@@ -13,7 +13,10 @@ class ElbowTracker:
 
         for _,spike in spikes.iterrows():
 
-            s = idx[spike.time]
+            s = idx.get(spike.time)
+            if s is None:
+                continue
+
             dir = spike.direction
 
             first=False
@@ -21,8 +24,13 @@ class ElbowTracker:
 
             for j in range(s+1, min(s+lookahead,len(df))):
 
-                red = closes[j] < opens[j]
-                green = closes[j] > opens[j]
+                body = abs(closes[j] - opens[j])
+
+                red = closes[j] < opens[j] and body > 0.15
+                green = closes[j] > opens[j] and body > 0.15
+
+                if j == s+1:
+                    continue
 
                 opp = (dir=="BULLISH" and red) or (dir=="BEARISH" and green)
 

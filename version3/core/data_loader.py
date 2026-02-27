@@ -38,6 +38,6 @@ def load_data(path):
 
     # H4 positioning
     df["h4_start"] = df["time"].dt.floor("4h")
-    df["minute_in_h4"] = (df["time"] - df["h4_start"]).dt.total_seconds()/60
+    df["minute_in_h4"] = ((df["time"] - df["h4_start"]).dt.total_seconds() // 60).astype(int)
 
     return df
