@@ -2,42 +2,45 @@ import pandas as pd
 
 def load_data(path):
 
-    # Try reading with header first
-    df = pd.read_csv(path)
+    # Read semicolon-separated file
+    df = pd.read_csv(path, sep=";")
 
     # Normalize column names
     df.columns = [c.strip().lower() for c in df.columns]
 
-    # If header not present, reload correctly
-    if "date" not in df.columns:
-        df = pd.read_csv(
-            path,
-            header=None,
-            names=["date","time","open","high","low","close","volume"]
-        )
+    # Rename to engine format
+    rename_map = {
+        "date": "time",
+        "open": "open",
+        "high": "high",
+        "low": "low",
+        "close": "close",
+        "volume": "volume"
+    }
 
-    # Convert to string before combining
-    df["date"] = df["date"].astype(str)
-    df["time"] = df["time"].astype(str)
+    df = df.rename(columns=rename_map)
 
-    # Merge date + time
+    # Parse datetime
     df["time"] = pd.to_datetime(
-        df["date"] + " " + df["time"],
+        df["time"],
+        format="%Y.%m.%d %H:%M",
         errors="coerce"
     )
 
-    df = df.drop(columns=["date"])
-    df = df.dropna().reset_index(drop=True)
-
-    # Convert numeric columns safely
+    # Convert numeric columns
     for c in ["open","high","low","close","volume"]:
         df[c] = pd.to_numeric(df[c], errors="coerce")
 
+    # Drop bad rows
     df = df.dropna().reset_index(drop=True)
+
+    # Sort chronologically
     df = df.sort_values("time").reset_index(drop=True)
 
-    # H4 positioning
+    # H4 positioning (same as before)
     df["h4_start"] = df["time"].dt.floor("4h")
-    df["minute_in_h4"] = ((df["time"] - df["h4_start"]).dt.total_seconds() // 60).astype(int)
+    df["minute_in_h4"] = (
+        (df["time"] - df["h4_start"]).dt.total_seconds() // 60
+    ).astype(int)
 
     return df
