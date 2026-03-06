@@ -2,32 +2,32 @@ import pandas as pd
 
 class FibonacciEntry:
 
-    def generate(self, shifts, deeper=True):
-
+    def generate(self, shifts, deeper=True, sl_buffer=0.50):
         trades = []
 
         for _, imp in shifts.iterrows():
-
             trend = imp["trend"]
 
             # ----------------------------------
-            # UP impulse → SELL retracement
+            # UP Impulse -> Shifted Down -> SELL Retracement
             # ----------------------------------
             if trend == "UP":
-
                 hl = imp["HL"]
                 hh = imp["HH"]
 
                 if pd.isna(hl) or pd.isna(hh) or hh <= hl:
                     continue
 
-                fib40 = hl + (hh-hl)*0.40
-                fib55 = hl + (hh-hl)*0.55
+                range_val = hh - hl
+                
+                # Fib drawn from Top (HH) down to Bottom (HL)
+                fib40 = hh - (range_val * 0.40)
+                fib55 = hh - (range_val * 0.55)
 
                 entry = fib55 if deeper else fib40
-                sl = hh + 0.01
-
-                risk = abs(entry - sl)
+                sl = hh + sl_buffer
+                
+                risk = abs(sl - entry)
                 tp = entry - risk
 
                 trades.append({
@@ -41,21 +41,23 @@ class FibonacciEntry:
                 })
 
             # ----------------------------------
-            # DOWN impulse → BUY retracement
+            # DOWN Impulse -> Shifted Up -> BUY Retracement
             # ----------------------------------
             else:
-
                 lh = imp["LH"]
                 ll = imp["LL"]
 
                 if pd.isna(lh) or pd.isna(ll) or lh <= ll:
                     continue
 
-                fib40 = ll + (lh-ll)*0.40
-                fib55 = ll + (lh-ll)*0.55
+                range_val = lh - ll
+                
+                # Fib drawn from Bottom (LL) up to Top (LH)
+                fib40 = ll + (range_val * 0.40)
+                fib55 = ll + (range_val * 0.55)
 
                 entry = fib55 if deeper else fib40
-                sl = ll - 0.01
+                sl = ll - sl_buffer
 
                 risk = abs(entry - sl)
                 tp = entry + risk

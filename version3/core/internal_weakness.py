@@ -3,32 +3,25 @@ import pandas as pd
 class InternalWeaknessDetector:
 
     def detect(self, df, impulses, lookahead=100, min_delay=3):
-
         opens  = df["open"].values
         closes = df["close"].values
-        highs  = df["high"].values
-        lows   = df["low"].values
         times  = df["time"].values
 
         idx = {t:i for i,t in enumerate(times)}
-
         events = []
 
         for n, imp in impulses.iterrows():
-
             i = idx.get(imp["time"])
             if i is None:
                 continue
 
             trend = imp["trend"]
 
-            # skip invalid structure rows
             if trend == "UP" and pd.isna(imp["HL"]):
                 continue
             if trend != "UP" and pd.isna(imp["LH"]):
                 continue
 
-            # boundary of next impulse
             if n < len(impulses)-1:
                 next_imp = idx.get(impulses.iloc[n+1]["time"])
             else:
@@ -39,17 +32,16 @@ class InternalWeaknessDetector:
                 end = min(end, next_imp)
 
             for j in range(i + min_delay, end):
-
-                body = abs(closes[j] - opens[j])
+                
+                is_green = closes[j] > opens[j]
+                is_red = closes[j] < opens[j]
 
                 # -----------------------------
-                # SELL shift → body below HL
+                # BULLISH SPIKE -> SELL SHIFT
+                # Wait for RED candle close to break below HL body
                 # -----------------------------
                 if trend == "UP":
-
-                    body_high = max(opens[j], closes[j])
-
-                    if body_high < imp["HL"] and body > 0.15:
+                    if is_red and closes[j] < imp["HL_body"]:
                         events.append({
                             "shift_time": times[j],
                             "direction": "SELL",
@@ -60,13 +52,11 @@ class InternalWeaknessDetector:
                         break
 
                 # -----------------------------
-                # BUY shift → body above LH
+                # BEARISH SPIKE -> BUY SHIFT
+                # Wait for GREEN candle close to break above LH body
                 # -----------------------------
                 else:
-
-                    body_low = min(opens[j], closes[j])
-
-                    if body_low > imp["LH"] and body > 0.15:
+                    if is_green and closes[j] > imp["LH_body"]:
                         events.append({
                             "shift_time": times[j],
                             "direction": "BUY",

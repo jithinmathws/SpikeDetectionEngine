@@ -7,6 +7,7 @@ from core.metrics import print_stats
 from core.fib_entry import FibonacciEntry
 from core.trade_simulator import TradeSimulator
 from core.performance import report
+from core.visualizer import TradeVisualizer
 
 import config
 import pandas as pd
@@ -94,9 +95,15 @@ print(shifts.head())
 # PHASE 6: FIBONACCI ENTRY PLANNING
 # --------------------------------------------------
 fib = FibonacciEntry()
-trades = fib.generate(shifts)
 
-print("\n--- Planned Fibonacci Trades ---")
+# Pass parameters from config
+trades = fib.generate(
+    shifts, 
+    deeper=config.DEEPER_ENTRY, 
+    sl_buffer=config.SL_BUFFER
+)
+
+print(f"\n--- Planned Fibonacci Trades (Entry: {'55%' if config.DEEPER_ENTRY else '40%'}) ---")
 print("Trades generated:", len(trades))
 print(trades.head())
 
@@ -131,3 +138,29 @@ if len(impulses):
 # STATS
 # --------------------------------------------------
 print_stats(filtered_spikes, shifts)
+
+# --------------------------------------------------
+# PHASE 9: VISUALIZE SAMPLE TRADES
+# --------------------------------------------------
+print("\n--- Generating Charts ---")
+viz = TradeVisualizer()
+
+# Grab the first 5 winners
+winners = results[results["result"] == "WIN"].head(5)
+if not winners.empty:
+    print(f"Plotting {len(winners)} WIN trades...")
+    for _, trade in winners.iterrows():
+        viz.plot_trade(df, trade)
+else:
+    print("No WIN trades found to plot.")
+
+# Grab the first 5 losers
+losses = results[results["result"] == "LOSS"].head(5)
+if not losses.empty:
+    print(f"Plotting {len(losses)} LOSS trades...")
+    for _, trade in losses.iterrows():
+        viz.plot_trade(df, trade)
+else:
+    print("No LOSS trades found to plot.")
+
+print("\nFinished generating charts! Check your project directory for the .png files.")

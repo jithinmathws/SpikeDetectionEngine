@@ -81,7 +81,9 @@ class TradeSimulator:
                 "tp": tp,
                 "direction": direction,
                 "result": outcome,
-                "exit_time": exit_time
+                "exit_time": exit_time,
+                "fib40": t["fib40"],
+                "fib55": t["fib55"]
             })
 
         return pd.DataFrame(results)

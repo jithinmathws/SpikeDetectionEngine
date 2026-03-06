@@ -7,43 +7,53 @@ class ElbowTracker:
         opens = df["open"].values
         closes = df["close"].values
         times = df["time"].values
+        # Create a mapping for quick index lookup based on timestamp
         idx = {t:i for i,t in enumerate(times)}
 
         events=[]
 
-        for _,spike in spikes.iterrows():
+        for _, spike in spikes.iterrows():
 
             s = idx.get(spike.time)
             if s is None:
                 continue
 
-            dir = spike.direction
+            direction = spike.direction
+            first_wave_confirmed = False
+            count = 0
 
-            first=False
-            count=0
-
-            for j in range(s+1, min(s+lookahead,len(df))):
+            # Scan forward from the spike to find two distinct waves of opposite candles
+            for j in range(s + 1, min(s + lookahead, len(df))):
 
                 body = abs(closes[j] - opens[j])
 
-                red = closes[j] < opens[j] and body > 0.15
-                green = closes[j] > opens[j] and body > 0.15
+                # Candle definitions based on body size threshold
+                is_red = closes[j] < opens[j] and body > 0.15
+                is_green = closes[j] > opens[j] and body > 0.15
 
-                if j == s+1:
+                # Ignore the immediate candle following the spike to allow for spread/noise
+                if j == s + 1:
                     continue
 
-                opp = (dir=="BULLISH" and red) or (dir=="BEARISH" and green)
+                # Identify if current candle opposes the spike direction
+                is_opposite = (direction == "BULLISH" and is_red) or \
+                              (direction == "BEARISH" and is_green)
 
-                if opp:
-                    count+=1
+                if is_opposite:
+                    count += 1
                 else:
-                    if count==2:
-                        if not first:
-                            first=True
+                    # UPDATED: If we have at least 2 opposite candles, a wave is identified
+                    if count >= 2:
+                        if not first_wave_confirmed:
+                            # First exhaustion attempt found, reset to look for the second
+                            first_wave_confirmed = True
                         else:
-                            events.append((spike.time,times[j],dir))
+                            # Second exhaustion attempt found; this confirms the 'Elbow'
+                            events.append((spike.time, times[j], direction))
                             break
-                    count=0
+                    
+                    # Reset counter if the streak of opposite candles is broken
+                    count = 0
 
         return pd.DataFrame(events,
-                            columns=["spike_time","reversal_time","direction"])
+                            columns=["spike_time", "reversal_time", "direction"])
